@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     TRANSFORMERS_NO_FLASH_ATTENTION=1 \
     HF_HUB_DISABLE_XET=1 \
+    HF_HUB_ENABLE_HF_TRANSFER=1 \
     HF_HOME=/app/hf_cache
 
 WORKDIR /app
@@ -23,11 +24,19 @@ RUN pip install --no-cache-dir \
 COPY requirements.txt /app/requirements.txt
 RUN pip install -r /app/requirements.txt
 
-# ── PRE-BAKE: download both models into the image at build time ──
+# Install hf_transfer for fast downloads
+RUN pip install hf_transfer
+
+# Download transformer weights only (smaller, ~3GB)
+RUN python3 -c "\
+from huggingface_hub import snapshot_download; \
+snapshot_download('prithivMLmods/Qwen-Image-Edit-Rapid-AIO-V21', cache_dir='/app/hf_cache'); \
+"
+
+# Download base model (larger, ~12GB)
 RUN python3 -c "\
 from huggingface_hub import snapshot_download; \
 snapshot_download('Qwen/Qwen-Image-Edit-2511', cache_dir='/app/hf_cache'); \
-snapshot_download('prithivMLmods/Qwen-Image-Edit-Rapid-AIO-V21', cache_dir='/app/hf_cache'); \
 "
 
 COPY handler.py /app/handler.py
